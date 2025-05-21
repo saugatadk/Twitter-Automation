@@ -2,6 +2,7 @@ import tweepy
 from dotenv import load_dotenv
 from openai import OpenAI
 import os
+import re
 
 def get_client():
     load_dotenv()
@@ -30,14 +31,32 @@ completion = client.chat.completions.create(
 #     "X-Title": "<YOUR_SITE_NAME>", # Optional. Site title for rankings on openrouter.ai.
 #   },
   extra_body={},
-  model="meta-llama/llama-3.3-8b-instruct:free",
+  model="google/gemma-3n-e4b-it:free",
   messages=[
     {
       "role": "user",
-      "content": "Write a tweet thread for Twitter aimed at startup founders within 200 words. The goal is to go viral. Start with a curiosity-driven hook like Most startups die for the same 3 reasons — but no one talks about them 🧵 but also make sure to change it to something even better from time to time. Make the rest of the tweets concise and valuable, with insights from real founder experiences. Use emojis occasionally and clear formatting.End with a CTA like ‘Follow me for more founder tips’.DONOT INCLUDE ABOUT yourhandle or any that kind of hastags. Output the tweet only, without the starting lines like here is a tweet or anything like that. Make sure the numbers are. The formatting should be in simply understandable english without any typos like markdown.Keep the numbering for reasons 1. 2. 3. type only and display only 3 points. Donot make unnecessary paragraphs"
+      "content": "Write a single-sentence viral tweet for startup founders with a curiosity-driven hook, clear insight, and no hashtags or mentions and end with ‘Follow me for more founder tips.’"
     }
   ]
 )
-print(completion.choices[0].message.content)
+
+tweet_text = completion.choices[0].message.content.strip()
+
+# Sanitize the tweet:
+def sanitize_tweet(text):
+    text = text.replace('\n\n', '\n')  # remove double line breaks
+    text = re.sub(r'http\S+', '', text)  # remove links
+    text = re.sub(r'@\w+', '', text)  # remove mentions
+    text = re.sub(r'#\w+', '', text)  # remove hashtags
+    text = text.encode('ascii', errors='ignore').decode()  # remove non-ASCII characters like unusual emojis
+    return text.strip()
+
+tweet_text = sanitize_tweet(tweet_text)
+
+# Log tweet before sending
+print("Sanitized Tweet:\n", tweet_text)
+
+
+# Post to Twitter
 client = get_client()
-create_tweet(client, completion.choices[0].message.content)
+# create_tweet(client, tweet_text)
